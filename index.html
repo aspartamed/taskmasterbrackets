@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskmaster UK: Ultimate Bracket</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap');
+
+        body {
+            background-color: #1a1a1a;
+            color: #f3f4f6;
+            font-family: 'Courier Prime', monospace;
+        }
+        
+        h1, h2, h3, .tm-title {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .gold-border {
+            border-color: #d4af37;
+        }
+
+        .gold-text {
+            color: #d4af37;
+        }
+
+        .bg-tm-red {
+            background-color: #8b0000;
+        }
+        
+        .wax-seal {
+            background: #8b0000;
+            border-radius: 50%;
+            border: 4px solid #5a0000;
+            box-shadow: inset 0 0 10px #3a0000, 0 4px 6px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .wax-seal::after {
+            content: 'TM';
+            font-family: 'Playfair Display', serif;
+            color: #5a0000;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 0px #a00000;
+        }
+
+        .matchup-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .matchup-card:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+            cursor: pointer;
+        }
+
+        /* Modal animations */
+        #battleModal {
+            backdrop-filter: blur(5px);
+        }
+        
+        .vs-text {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .img-fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+        
+        /* New Bracket CSS */
+        .bracket-scroll {
+            overflow-x: auto;
+            padding-bottom: 2rem;
+            cursor: grab;
+        }
+        .bracket-scroll:active { cursor: grabbing; }
+        .bracket-wrapper {
+            display: flex;
+            gap: 3rem;
+            min-width: max-content;
+            padding: 1rem;
+        }
+        .bracket-round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 260px;
+            position: relative;
+        }
+        .bracket-round-title {
+            text-align: center;
+            color: #d4af37;
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .bracket-match {
+            background: #1f2937;
+            border: 2px solid #374151;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+        .bracket-match:hover { border-color: #d4af37; box-shadow: 0 0 10px rgba(212,175,55,0.3); }
+        .bracket-match.completed { border-color: #8b0000; }
+        
+        .match-player {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            gap: 0.75rem;
+            border-bottom: 1px solid #374151;
+        }
+        .match-player:last-child { border-bottom: none; }
+        .match-player img {
+            width: 30px; height: 30px; border-radius: 50%; object-fit: cover;
+        }
+        .player-empty {
+            color: #6b7280; font-style: italic; font-size: 0.875rem;
+        }
+        .player-name-small {
+            font-size: 0.875rem; color: #f3f4f6; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+        }
+        .winner-bg { background-color: rgba(212, 175, 55, 0.15); }
+        .winner-text { color: #d4af37; }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="border-b-4 gold-border bg-black py-6 relative shadow-lg">
+        <div class="container mx-auto px-4 flex items-center justify-center gap-4">
+            <div class="wax-seal w-16 h-16 transform -rotate-12"></div>
+            <div class="text-center">
+                <h1 class="text-3xl md:text-5xl font-bold gold-text uppercase tracking-widest">Taskmaster</h1>
+                <p class="text-gray-400 mt-2 text-sm md:text-base">The Ultimate 64-Contestant Tournament</p>
+            </div>
+            <div class="wax-seal w-16 h-16 transform rotate-12"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 mt-8 w-full max-w-[100vw]">
+        
+        <div class="text-center mb-8 text-gray-400 italic">
+            <p><i class="fas fa-hand-pointer text-[#d4af37]"></i> Click any matchup to view stats and vote for the winner.</p>
+            <p><i class="fas fa-arrows-alt-h text-[#d4af37]"></i> Drag or scroll horizontally to view the full bracket tree.</p>
+        </div>
+
+        <!-- Scrolling Bracket Container -->
+        <div class="bracket-scroll" id="bracketContainer">
+            <div id="bracketWrapper" class="bracket-wrapper">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Battle Modal (Tale of the Tape) -->
+    <div id="battleModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border-2 gold-border rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+            
+            <!-- Close Button -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:gold-text text-2xl z-10 transition-colors">
+                <i class="fas fa-times-circle"></i>
+            </button>
+
+            <div class="p-6 md:p-8">
+                <h2 class="text-center text-2xl md:text-3xl gold-text mb-8 tm-title uppercase tracking-wide">Tale of the Tape</h2>
+                
+                <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+                    
+                    <!-- Player 1 -->
+                    <div class="flex-1 flex flex-col items-center text-center w-full">
+                        <div class="relative mb-4">
+                            <span class="absolute -top-3 -left-3 bg-tm-red text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 gold-border z-10" id="m-p1-seed">1</span>
+                            <img id="m-p1-img" src="" alt="Player 1" class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 gold-border shadow-lg object-cover bg-gray-800">
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-white mb-2 tm-title" id="m-p1-name">Name</h3>
+                        <div class="bg-black border gold-border p-4 rounded w-full h-full text-left mt-2">
+                            <p class="text-sm text-gray-400 mb-1"><i class="fas fa-tv w-5"></i> <span id="m-p1-series" class="text-white"></span></p>
+                            <p class="text-sm text-gray-400 mb-1"><i class="fas fa-star w-5"></i> <span id="m-p1-style" class="text-white"></span></p>
+                            <div class="mt-3 pt-3 border-t border-gray-700">
+                                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Iconic Vibe:</p>
+                                <p class="text-sm text-gray-300 italic" id="m-p1-info"></p>
+                                <div class="flex gap-3 mt-3">
+                                    <a id="m-p1-search-vid" href="#" target="_blank" class="inline-flex items-center text-xs text-[#d4af37] hover:text-white transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-600 hover:border-[#d4af37]">
+                                        <i class="fas fa-video mr-1"></i> Clips
+                                    </a>
+                                    <a id="m-p1-search-img" href="#" target="_blank" class="inline-flex items-center text-xs text-[#d4af37] hover:text-white transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-600 hover:border-[#d4af37]">
+                                        <i class="fas fa-image mr-1"></i> Images
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VS Badge -->
+                    <div class="flex flex-col items-center justify-center py-4">
+                        <div class="w-16 h-16 rounded-full bg-tm-red border-2 gold-border flex items-center justify-center shadow-lg transform rotate-12">
+                            <span class="vs-text text-white text-2xl font-bold">VS</span>
+                        </div>
+                    </div>
+
+                    <!-- Player 2 -->
+                    <div class="flex-1 flex flex-col items-center text-center w-full">
+                        <div class="relative mb-4">
+                            <span class="absolute -top-3 -right-3 bg-tm-red text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 gold-border z-10" id="m-p2-seed">16</span>
+                            <img id="m-p2-img" src="" alt="Player 2" class="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 gold-border shadow-lg object-cover bg-gray-800">
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-white mb-2 tm-title" id="m-p2-name">Name</h3>
+                        <div class="bg-black border gold-border p-4 rounded w-full h-full text-left mt-2">
+                            <p class="text-sm text-gray-400 mb-1"><i class="fas fa-tv w-5"></i> <span id="m-p2-series" class="text-white"></span></p>
+                            <p class="text-sm text-gray-400 mb-1"><i class="fas fa-star w-5"></i> <span id="m-p2-style" class="text-white"></span></p>
+                            <div class="mt-3 pt-3 border-t border-gray-700">
+                                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Iconic Vibe:</p>
+                                <p class="text-sm text-gray-300 italic" id="m-p2-info"></p>
+                                <div class="flex gap-3 mt-3">
+                                    <a id="m-p2-search-vid" href="#" target="_blank" class="inline-flex items-center text-xs text-[#d4af37] hover:text-white transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-600 hover:border-[#d4af37]">
+                                        <i class="fas fa-video mr-1"></i> Clips
+                                    </a>
+                                    <a id="m-p2-search-img" href="#" target="_blank" class="inline-flex items-center text-xs text-[#d4af37] hover:text-white transition-colors bg-gray-800 px-2 py-1 rounded border border-gray-600 hover:border-[#d4af37]">
+                                        <i class="fas fa-image mr-1"></i> Images
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Action Buttons -->
+                <div id="vote-controls" class="mt-8 flex flex-col md:flex-row justify-center gap-4 hidden">
+                    <button id="btn-vote-p1" class="flex-1 bg-tm-red hover:bg-red-700 text-white border-2 gold-border font-bold py-3 px-4 rounded transition-colors uppercase tracking-wider shadow-lg">
+                        Advance P1
+                    </button>
+                    <button id="btn-vote-p2" class="flex-1 bg-tm-red hover:bg-red-700 text-white border-2 gold-border font-bold py-3 px-4 rounded transition-colors uppercase tracking-wider shadow-lg">
+                        Advance P2
+                    </button>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <button onclick="closeModal()" class="bg-transparent border-2 gold-border gold-text hover:bg-[#d4af37] hover:text-black font-bold py-2 px-8 rounded transition-colors uppercase tracking-widest text-sm">
+                        Close / Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="statsModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border-2 gold-border rounded-xl shadow-2xl max-w-lg w-full p-6 md:p-8 relative">
+            <button onclick="closeStats()" class="absolute top-4 right-4 text-gray-400 hover:gold-text text-2xl z-10 transition-colors">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            <h2 class="text-center text-2xl md:text-3xl gold-text mb-6 tm-title uppercase tracking-wide">Your Taskmaster Profile</h2>
+            <div class="space-y-4">
+                <div class="bg-black border border-gray-700 p-4 rounded text-center">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Favorite Era</p>
+                    <p class="text-xl text-white font-bold" id="stat-season">-</p>
+                </div>
+                <div class="bg-black border border-gray-700 p-4 rounded text-center">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Vibe Demographic</p>
+                    <p class="text-xl text-white font-bold" id="stat-gender">-</p>
+                </div>
+                <div class="bg-black border border-gray-700 p-4 rounded text-center">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Preferred Chaos Level</p>
+                    <p class="text-xl text-white font-bold" id="stat-age">-</p>
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <button onclick="closeStats()" class="bg-tm-red hover:bg-red-700 text-white border-2 gold-border font-bold py-2 px-8 rounded transition-colors uppercase tracking-widest text-sm">
+                    Back to Bracket
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Structure
+        const allPlayers = [
+            // S1
+            { name: "Frank Skinner", series: "Series 1", style: "Philosophical Elder", info: "Excelled at eating watermelon.", gender: "M", birthYear: 1957 },
+            { name: "Josh Widdicombe", series: "Series 1", style: "Frustrated Logic", info: "Counted a bowl of baked beans.", gender: "M", birthYear: 1983 },
+            { name: "Roisin Conaty", series: "Series 1", style: "Joyful Confusion", info: "Brought in a live horse.", gender: "F", birthYear: 1979 },
+            { name: "Romesh Ranganathan", series: "Series 1", style: "Angry Logic", info: "Tree Wizard! Smashed a watermelon.", gender: "M", birthYear: 1978 },
+            { name: "Tim Key", series: "Series 1", style: "Sneaky Loophole Finder", info: "Threw a teabag into a mug.", gender: "M", birthYear: 1976 },
+            // S2
+            { name: "Doc Brown", series: "Series 2", style: "Cool Poise", info: "Punched a fish.", gender: "M", birthYear: 1977 },
+            { name: "Joe Wilkinson", series: "Series 2", style: "Tragic Hero", info: "Please don't take this away from me.", gender: "M", birthYear: 1975 },
+            { name: "Jon Richardson", series: "Series 2", style: "Pedantic Precision", info: "Sang Three Blind Mice uncomfortably.", gender: "M", birthYear: 1982 },
+            { name: "Katherine Ryan", series: "Series 2", style: "Ruthless Efficiency", info: "Bought a title for Greg.", gender: "F", birthYear: 1983 },
+            { name: "Richard Osman", series: "Series 2", style: "Towering Intellect", info: "Used yoga balls on the mat.", gender: "M", birthYear: 1970 },
+            // S3
+            { name: "Al Murray", series: "Series 3", style: "Money Talks", info: "Paid a man to do tasks.", gender: "M", birthYear: 1968 },
+            { name: "Dave Gorman", series: "Series 3", style: "Cheat Code", info: "Twin cheating tactics.", gender: "M", birthYear: 1971 },
+            { name: "Paul Chowdhry", series: "Series 3", style: "Deadpan Bizarre", info: "Bastard's crying, innit.", gender: "M", birthYear: 1974 },
+            { name: "Rob Beckett", series: "Series 3", style: "Loud & Cheerful", info: "Master of the surprise accent.", gender: "M", birthYear: 1986 },
+            { name: "Sara Pascoe", series: "Series 3", style: "Creative Flaps", info: "Wore a fake beard.", gender: "F", birthYear: 1981 },
+            // S4
+            { name: "Hugh Dennis", series: "Series 4", style: "Desks & Scissors", info: "Obsessed with mirrors.", gender: "M", birthYear: 1962 },
+            { name: "Joe Lycett", series: "Series 4", style: "Cheeky Saboteur", info: "Changed his name to Hugo Boss.", gender: "M", birthYear: 1988 },
+            { name: "Lolly Adefope", series: "Series 4", style: "Friendship", info: "Hid brilliantly.", gender: "F", birthYear: 1990 },
+            { name: "Mel Giedroyc", series: "Series 4", style: "Aggressively Nice", info: "Took all the wax seals.", gender: "F", birthYear: 1968 },
+            { name: "Noel Fielding", series: "Series 4", style: "Surreal Artist", info: "Painted with his mind.", gender: "M", birthYear: 1973 },
+            // S5
+            { name: "Aisling Bea", series: "Series 5", style: "Manic Panic", info: "Jelly-based abomination.", gender: "F", birthYear: 1984 },
+            { name: "Bob Mortimer", series: "Series 5", style: "Chaotic Genius", info: "Do we strike you?", gender: "M", birthYear: 1959 },
+            { name: "Mark Watson", series: "Series 5", style: "Nervous Energy", info: "Stole Greg's trousers.", gender: "M", birthYear: 1980 },
+            { name: "Nish Kumar", series: "Series 5", style: "Enthusiastic Failure", info: "A legend in last place.", gender: "M", birthYear: 1985 },
+            { name: "Sally Phillips", series: "Series 5", style: "Absolute Menace", info: "Birthed an absurd jelly baby.", gender: "F", birthYear: 1970 },
+            // S6
+            { name: "Alice Levine", series: "Series 6", style: "Charming Bafflement", info: "Couldn't figure out the dartboard.", gender: "F", birthYear: 1986 },
+            { name: "Asim Chaudhry", series: "Series 6", style: "Eager Innovation", info: "Invented a vegan hotdog.", gender: "M", birthYear: 1986 },
+            { name: "Liza Tarbuck", series: "Series 6", style: "Maternal Chaos", info: "Made Alex sit on a cake.", gender: "F", birthYear: 1964 },
+            { name: "Russell Howard", series: "Series 6", style: "Cheeky Boy", info: "Played cricket.", gender: "M", birthYear: 1980 },
+            { name: "Tim Vine", series: "Series 6", style: "Puns & Props", info: "Lost the track of the outfit.", gender: "M", birthYear: 1967 },
+            // S7
+            { name: "James Acaster", series: "Series 7", style: "Righteous Indignation", info: "My eyes are circles!", gender: "M", birthYear: 1985 },
+            { name: "Jessica Knappett", series: "Series 7", style: "Physical Comedy", info: "Fell off the stage.", gender: "F", birthYear: 1984 },
+            { name: "Kerry Godliman", series: "Series 7", style: "Bosh", info: "BOSH! No nonsense.", gender: "F", birthYear: 1973 },
+            { name: "Phil Wang", series: "Series 7", style: "Bruce Lee Suit", info: "The pendulum draws the eye.", gender: "M", birthYear: 1990 },
+            { name: "Rhod Gilbert", series: "Series 7", style: "Pure Evil", info: "Tied Alex up.", gender: "M", birthYear: 1968 },
+            // S8
+            { name: "Iain Stirling", series: "Series 8", style: "Shouting & Regret", info: "Lost his temper in team task.", gender: "M", birthYear: 1988 },
+            { name: "Joe Thomas", series: "Series 8", style: "Awkward Silence", info: "Put some pedal...", gender: "M", birthYear: 1983 },
+            { name: "Lou Sanders", series: "Series 8", style: "Unpredictable Edge", info: "Ate the eraser.", gender: "F", birthYear: 1985 },
+            { name: "Paul Sinha", series: "Series 8", style: "Struggling Intellect", info: "Couldn't use the phone box.", gender: "M", birthYear: 1970 },
+            { name: "Sian Gibson", series: "Series 8", style: "Sweet & Sneaky", info: "Tried to sneak peas.", gender: "F", birthYear: 1976 },
+            // S9
+            { name: "David Baddiel", series: "Series 9", style: "Elderly Confusion", info: "Drawers match the lasso.", gender: "M", birthYear: 1964 },
+            { name: "Ed Gamble", series: "Series 9", style: "Desperate Fanboy", info: "Meltdown over a chickpea.", gender: "M", birthYear: 1986 },
+            { name: "Jo Brand", series: "Series 9", style: "Zero Effort", info: "Went to the toilet during a task.", gender: "F", birthYear: 1957 },
+            { name: "Katy Wix", series: "Series 9", style: "Deadpan Absurdity", info: "Join our cult.", gender: "F", birthYear: 1980 },
+            { name: "Rose Matafeo", series: "Series 9", style: "Intense Competitor", info: "Brought the theme tune to life.", gender: "F", birthYear: 1992 },
+            // S10
+            { name: "Daisy May Cooper", series: "Series 10", style: "Furious Pregnancy", info: "The hippo drawing argument.", gender: "F", birthYear: 1986 },
+            { name: "Johnny Vegas", series: "Series 10", style: "Poetic Breakdown", info: "Made beautiful, tragic art.", gender: "M", birthYear: 1970 },
+            { name: "Katherine Parkinson", series: "Series 10", style: "Am I the spider?", info: "Total misunderstanding of physics.", gender: "F", birthYear: 1978 },
+            { name: "Mawaan Rizwan", series: "Series 10", style: "Sneaky & Shiny", info: "Filled an egg with helium.", gender: "M", birthYear: 1992 },
+            { name: "Richard Herring", series: "Series 10", style: "Hyper-Competitive", info: "Wanted to win so badly.", gender: "M", birthYear: 1967 },
+            // S11
+            { name: "Charlotte Ritchie", series: "Series 11", style: "Children's TV", info: "Wandered around confused.", gender: "F", birthYear: 1989 },
+            { name: "Jamali Maddix", series: "Series 11", style: "Rebellious Strolls", info: "Stomped on things.", gender: "M", birthYear: 1991 },
+            { name: "Lee Mack", series: "Series 11", style: "Quick-Fire Logic", info: "Extremely fast reflexes.", gender: "M", birthYear: 1968 },
+            { name: "Mike Wozniak", series: "Series 11", style: "Mustachioed Charm", info: "Absolute casserole down there.", gender: "M", birthYear: 1979 },
+            { name: "Sarah Kendall", series: "Series 11", style: "80s Action Hero", info: "Sensible logic.", gender: "F", birthYear: 1976 },
+            // S12
+            { name: "Alan Davies", series: "Series 12", style: "Tired Uncle", info: "Couldn't be bothered.", gender: "M", birthYear: 1966 },
+            { name: "Desiree Burch", series: "Series 12", style: "Booming Joy", info: "Drank the sand.", gender: "F", birthYear: 1981 },
+            { name: "Guz Khan", series: "Series 12", style: "Laid Back Hustle", info: "Brother Guz!", gender: "M", birthYear: 1986 },
+            { name: "Morgana Robinson", series: "Series 12", style: "Theatrical Madness", info: "Called Alex a little f*cker.", gender: "F", birthYear: 1982 },
+            { name: "Victoria Coren Mitchell", series: "Series 12", style: "Academic Confusion", info: "Learned to ride a bike.", gender: "F", birthYear: 1972 },
+            // S13
+            { name: "Ardal O'Hanlon", series: "Series 13", style: "Irish Charm", info: "Looked deeply confused.", gender: "M", birthYear: 1965 },
+            { name: "Bridget Christie", series: "Series 13", style: "Surreal Strolls", info: "Walked very strangely.", gender: "F", birthYear: 1971 },
+            { name: "Chris Ramsey", series: "Series 13", style: "Geordie Joy", info: "No way!", gender: "M", birthYear: 1986 },
+            { name: "Judi Love", series: "Series 13", style: "Bullshitter", info: "Made up crazy stories.", gender: "F", birthYear: 1980 },
+            { name: "Sophie Duker", series: "Series 13", style: "Cool Dominance", info: "Drank from the shoe.", gender: "F", birthYear: 1990 },
+            // S14
+            { name: "Dara Ó Briain", series: "Series 14", style: "Exasperated", info: "Wait, what?", gender: "M", birthYear: 1972 },
+            { name: "Fern Brady", series: "Series 14", style: "Tired & Angry", info: "Rightful queen.", gender: "F", birthYear: 1986 },
+            { name: "John Kearns", series: "Series 14", style: "Existential Dread", info: "Sabotaged his own team.", gender: "M", birthYear: 1987 },
+            { name: "Munya Chawawa", series: "Series 14", style: "Smooth Criminal", info: "Zimbabwean flair.", gender: "M", birthYear: 1993 },
+            { name: "Sarah Millican", series: "Series 14", style: "Cozy Efficiency", info: "Brought snacks.", gender: "F", birthYear: 1975 },
+            // S15
+            { name: "Frankie Boyle", series: "Series 15", style: "Nihilistic Art", info: "Painted existential doom.", gender: "M", birthYear: 1972 },
+            { name: "Ivo Graham", series: "Series 15", style: "Apologetic Boy", info: "Constant self-deprecation.", gender: "M", birthYear: 1990 },
+            { name: "Jenny Eclair", series: "Series 15", style: "Manic Aunt", info: "Absolutely buzzed.", gender: "F", birthYear: 1960 },
+            { name: "Kiell Smith-Bynoe", series: "Series 15", style: "Righteous Outrage", info: "Very competitive.", gender: "M", birthYear: 1989 },
+            { name: "Mae Martin", series: "Series 15", style: "Laser Focus", info: "Incredibly competent.", gender: "NB", birthYear: 1987 },
+            // S16
+            { name: "Julian Clary", series: "Series 16", style: "Withering Contempt", info: "Disdain for Alex.", gender: "M", birthYear: 1959 },
+            { name: "Lucy Beaumont", series: "Series 16", style: "Baffling Innocence", info: "Didn't know what a body was.", gender: "F", birthYear: 1983 },
+            { name: "Sam Campbell", series: "Series 16", style: "Alien Logic", info: "Are you a child of divorce?", gender: "M", birthYear: 1991 },
+            { name: "Sue Perkins", series: "Series 16", style: "Articulate Panic", info: "Broke the rules elegantly.", gender: "F", birthYear: 1969 },
+            { name: "Susan Wokoma", series: "Series 16", style: "Joyful Destruction", info: "Thirty grand, baby!", gender: "F", birthYear: 1987 },
+            // S17
+            { name: "Joanne McNally", series: "Series 17", style: "Gossip", info: "Messy night out energy.", gender: "F", birthYear: 1983 },
+            { name: "John Robins", series: "Series 17", style: "Tortured Perfectionist", info: "Life-or-death exam.", gender: "M", birthYear: 1982 },
+            { name: "Nick Mohammed", series: "Series 17", style: "Vampire Dracula", info: "Wore the cape.", gender: "M", birthYear: 1980 },
+            { name: "Sophie Willan", series: "Series 17", style: "Northern Charm", info: "Deeply unpredictable.", gender: "F", birthYear: 1987 },
+            { name: "Steve Pemberton", series: "Series 17", style: "Dark Secrets", info: "Hid number 9s.", gender: "M", birthYear: 1967 },
+            // S18
+            { name: "Andy Zaltzman", series: "Series 18", style: "Pun Heavy", info: "Cricketing metaphors.", gender: "M", birthYear: 1974 },
+            { name: "Babatunde Aléshé", series: "Series 18", style: "Reluctant", info: "Wanted to go home.", gender: "M", birthYear: 1986 },
+            { name: "Emma Sidi", series: "Series 18", style: "Intense Character", info: "Bodily dedication.", gender: "F", birthYear: 1991 },
+            { name: "Jack Dee", series: "Series 18", style: "Grumpy Resignation", info: "Hated every second.", gender: "M", birthYear: 1961 },
+            { name: "Rosie Jones", series: "Series 18", style: "Loud & Proud", info: "Massive volume.", gender: "F", birthYear: 1990 },
+            // S19
+            { name: "Fatiha El-Ghorri", series: "Series 19", style: "Stand-up & Writer", info: "British stand-up comedian.", gender: "F", birthYear: 1980 },
+            { name: "Jason Mantzoukas", series: "Series 19", style: "Hollywood Chaos", info: "Maximum Derek energy.", gender: "M", birthYear: 1972 },
+            { name: "Mathew Baynton", series: "Series 19", style: "Thespian", info: "Method acting tasks.", gender: "M", birthYear: 1980 },
+            { name: "Rosie Ramsey", series: "Series 19", style: "Podcaster", info: "Brought podcast energy.", gender: "F", birthYear: 1986 },
+            { name: "Stevie Martin", series: "Series 19", style: "Sketch Comedian", info: "Mighty Bunny co-host.", gender: "F", birthYear: 1988 },
+            // S20
+            { name: "Ania Magliano", series: "Series 20", style: "Stand-up", info: "Award-nominated comedian.", gender: "F", birthYear: 1998 },
+            { name: "Maisie Adam", series: "Series 20", style: "Energetic Scrapper", info: "Threw herself in the mud.", gender: "F", birthYear: 1994 },
+            { name: "Phil Ellis", series: "Series 20", style: "Excellent Adventure", info: "Edinburgh Fringe legend.", gender: "M", birthYear: 1980 },
+            { name: "Reece Shearsmith", series: "Series 20", style: "Dark Comedy", info: "Inside No. 9 logic.", gender: "M", birthYear: 1969 },
+            { name: "Sanjeev Bhaskar", series: "Series 20", style: "Legend", info: "Star of The Kumars.", gender: "M", birthYear: 1963 },
+            // S21
+            { name: "Amy Gledhill", series: "Series 21", style: "Award Winner", info: "Edinburgh Comedy Award-winning.", gender: "F", birthYear: 1992 },
+            { name: "Armando Iannucci", series: "Series 21", style: "Satirist", info: "Creator of The Thick of It.", gender: "M", birthYear: 1963 },
+            { name: "Joanna Page", series: "Series 21", style: "Sweetness", info: "Gavin & Stacey star.", gender: "F", birthYear: 1977 },
+            { name: "Joel Dommett", series: "Series 21", style: "Host Energy", info: "The Masked Singer presenter.", gender: "M", birthYear: 1985 },
+            { name: "Kumail Nanjiani", series: "Series 21", style: "Hollywood", info: "International star power.", gender: "M", birthYear: 1978 }
+        ];
+
+        // Image Management
+        const imageCache = {};
+
+        // Add your own image URLs here for contestants missing photos
+        const manualImageOverrides = {};
+
+        function getFallbackUrl(name) {
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a1a1a&color=d4af37&size=150&bold=true&font-size=0.4`;
+        }
+
+        // Updated function to check Wikipedia first, then Fandom
+        async function fetchImageSource(name) {
+            const fetchFromApi = async (baseUrl, title) => {
+                const url = `${baseUrl}?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=300&origin=*`;
+                try {
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    const pages = data.query.pages;
+                    const pageId = Object.keys(pages)[0];
+                    if (pageId !== "-1" && pages[pageId].thumbnail) {
+                        return pages[pageId].thumbnail.source;
+                    }
+                } catch (e) {
+                    // Fail silently and try the next fallback
+                }
+                return null;
+            };
+
+            const fandomApi = 'https://taskmaster.fandom.com/api.php';
+            const wikiApi = 'https://en.wikipedia.org/w/api.php';
+
+            // 1. Try Wikipedia exact name (Primary)
+            let imgSrc = await fetchFromApi(wikiApi, name);
+            
+            // 2. Try Wikipedia disambiguations
+            if (!imgSrc) imgSrc = await fetchFromApi(wikiApi, name + " (comedian)");
+            if (!imgSrc) imgSrc = await fetchFromApi(wikiApi, name + " (actor)");
+
+            // 3. Try Taskmaster Fandom (Fallback for newer/niche contestants)
+            if (!imgSrc) imgSrc = await fetchFromApi(fandomApi, name);
+            
+            return imgSrc;
+        }
+
+        async function loadImage(elementId, name) {
+            const imgElement = document.getElementById(elementId);
+            if (!imgElement) return;
+
+            // Set fallback immediately so layout doesn't break
+            imgElement.src = getFallbackUrl(name);
+            imgElement.classList.remove('img-fade-in');
+
+            // Check for manual override first
+            if (manualImageOverrides[name]) {
+                imgElement.src = manualImageOverrides[name];
+                imgElement.classList.add('img-fade-in');
+                return;
+            }
+
+            // Check cache
+            if (imageCache[name]) {
+                if (imageCache[name] !== 'notfound') {
+                    imgElement.src = imageCache[name];
+                    imgElement.classList.add('img-fade-in');
+                }
+                return;
+            }
+
+            // Fetch from Fandom/Wikipedia APIs
+            try {
+                const imgSrc = await fetchImageSource(name);
+                if (imgSrc) {
+                    imageCache[name] = imgSrc;
+                    if (imgElement) {
+                        imgElement.src = imgSrc;
+                        imgElement.classList.add('img-fade-in');
+                    }
+                } else {
+                    imageCache[name] = 'notfound';
+                }
+            } catch (e) {
+                console.error("Failed to fetch image for " + name);
+                imageCache[name] = 'notfound';
+            }
+        }
+
+        // Bracket State Management (128 slots for 105 players)
+        const bracketState = [
+            Array(64).fill(null).map(() => ({ p1: null, p2: null, winner: null })), // Round of 128 (Play-ins)
+            Array(32).fill(null).map(() => ({ p1: null, p2: null, winner: null })), // Round of 64
+            Array(16).fill(null).map(() => ({ p1: null, p2: null, winner: null })), // Round of 32
+            Array(8).fill(null).map(() => ({ p1: null, p2: null, winner: null })),  // Sweet 16
+            Array(4).fill(null).map(() => ({ p1: null, p2: null, winner: null })),  // Elite 8
+            Array(2).fill(null).map(() => ({ p1: null, p2: null, winner: null })),  // Final 4
+            Array(1).fill(null).map(() => ({ p1: null, p2: null, winner: null }))   // Championship
+        ];
+        let grandChampion = null;
+
+        // Initialize App
+        function init() {
+            let pIndex = 0;
+            for (let i = 0; i < 64; i++) {
+                bracketState[0][i].p1 = allPlayers[pIndex++];
+                
+                // 105 players into 64 matches = 23 Byes (1 player only), 41 Matches (2 players)
+                if (i >= 23 && pIndex < allPlayers.length) {
+                    bracketState[0][i].p2 = allPlayers[pIndex++];
+                } else {
+                    bracketState[0][i].p2 = null; // BYE
+                    bracketState[0][i].winner = 1; // Auto-advance P1
+                    
+                    const nextMatch = Math.floor(i / 2);
+                    const isPlayer1 = i % 2 === 0;
+                    if (isPlayer1) bracketState[1][nextMatch].p1 = bracketState[0][i].p1;
+                    else bracketState[1][nextMatch].p2 = bracketState[0][i].p1;
+                }
+            }
+
+            renderMatchups();
+            setupDragScroll();
+        }
+
+        // Render Bracket Tree
+        function renderMatchups() {
+            const container = document.getElementById('bracketWrapper');
+            container.innerHTML = '';
+            
+            const roundNames = ["Play-In Round", "Round of 64", "Round of 32", "Sweet 16", "Elite 8", "Final 4", "Championship"];
+
+            bracketState.forEach((round, rIndex) => {
+                const col = document.createElement('div');
+                col.className = 'bracket-round';
+                
+                const title = document.createElement('div');
+                title.className = 'bracket-round-title';
+                title.innerText = roundNames[rIndex];
+                col.appendChild(title);
+
+                round.forEach((match, mIndex) => {
+                    const card = document.createElement('div');
+                    card.className = `bracket-match ${match.winner ? 'completed' : ''}`;
+                    
+                    const p1ImgId = `sm-img-${rIndex}-${mIndex}-1`;
+                    const p2ImgId = `sm-img-${rIndex}-${mIndex}-2`;
+
+                    const p1HTML = match.p1 
+                        ? `<img id="${p1ImgId}" src="${getFallbackUrl(match.p1.name)}"><span class="player-name-small ${match.winner === 1 ? 'winner-text' : ''}">${match.p1.name}</span>`
+                        : `<div class="w-[30px] h-[30px] rounded-full border border-gray-600 border-dashed"></div><span class="player-empty">Awaiting</span>`;
+                    
+                    let p2HTML = "";
+                    if (match.p2) {
+                        p2HTML = `<img id="${p2ImgId}" src="${getFallbackUrl(match.p2.name)}"><span class="player-name-small ${match.winner === 2 ? 'winner-text' : ''}">${match.p2.name}</span>`;
+                    } else if (rIndex === 0 && !match.p2 && match.p1) {
+                        p2HTML = `<div class="w-[30px] h-[30px] rounded-full border border-gray-600 border-dashed"></div><span class="player-empty text-gray-400">BYE (Auto-Advance)</span>`;
+                    } else {
+                        p2HTML = `<div class="w-[30px] h-[30px] rounded-full border border-gray-600 border-dashed"></div><span class="player-empty">Awaiting</span>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="match-player ${match.winner === 1 ? 'winner-bg' : ''}">
+                            ${p1HTML}
+                        </div>
+                        <div class="match-player ${match.winner === 2 ? 'winner-bg' : ''}">
+                            ${p2HTML}
+                        </div>
+                    `;
+
+                    card.onclick = () => openModal(rIndex, mIndex);
+                    col.appendChild(card);
+                });
+                
+                container.appendChild(col);
+            });
+
+            // Add Champion Column
+            const winnerCol = document.createElement('div');
+            winnerCol.className = 'bracket-round justify-center';
+            const wTitle = document.createElement('div');
+            wTitle.className = 'bracket-round-title text-2xl';
+            wTitle.innerText = "Champion";
+            winnerCol.appendChild(wTitle);
+
+            const wCard = document.createElement('div');
+            wCard.className = `bracket-match p-6 text-center cursor-default ${grandChampion ? 'border-[#d4af37] shadow-[0_0_20px_rgba(212,175,55,0.5)]' : ''}`;
+            
+            if (grandChampion) {
+                wCard.innerHTML = `
+                    <img id="champ-img" src="${getFallbackUrl(grandChampion.name)}" class="w-32 h-32 mx-auto rounded-full border-4 gold-border mb-4 object-cover">
+                    <h3 class="gold-text font-bold text-2xl">${grandChampion.name}</h3>
+                    <p class="text-sm text-gray-400 mt-2 mb-4">The Ultimate Taskmaster</p>
+                    <button onclick="showStats()" class="bg-transparent border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37] hover:text-black font-bold py-1 px-4 rounded text-xs uppercase transition-colors">
+                        View Your Stats
+                    </button>
+                `;
+            } else {
+                 wCard.innerHTML = `
+                    <div class="w-32 h-32 mx-auto rounded-full border-4 border-gray-700 border-dashed mb-4 flex items-center justify-center">
+                        <i class="fas fa-trophy text-5xl text-gray-700"></i>
+                    </div>
+                    <h3 class="text-gray-500 font-bold text-xl">Undecided</h3>
+                `;
+            }
+            winnerCol.appendChild(wCard);
+            container.appendChild(winnerCol);
+
+            // Fetch and set all images AFTER the HTML is appended to the DOM
+            bracketState.forEach((round, rIndex) => {
+                round.forEach((match, mIndex) => {
+                    if (match.p1) loadImage(`sm-img-${rIndex}-${mIndex}-1`, match.p1.name);
+                    if (match.p2) loadImage(`sm-img-${rIndex}-${mIndex}-2`, match.p2.name);
+                });
+            });
+            if (grandChampion) loadImage('champ-img', grandChampion.name);
+        }
+
+        // Modal Logic
+        function openModal(rIndex, mIndex) {
+            const match = bracketState[rIndex][mIndex];
+            if (!match.p1 && !match.p2) return; // Ignore entirely empty matches
+            if (rIndex === 0 && match.p1 && !match.p2) return; // Ignore BYE clicks
+            
+            const modal = document.getElementById('battleModal');
+            
+            // Helper to populate or clear player info
+            const setPlayerUI = (playerNum, player) => {
+                const prefix = `m-p${playerNum}-`;
+                if (player) {
+                    document.getElementById(prefix + 'name').innerText = player.name;
+                    document.getElementById(prefix + 'seed').innerText = "★";
+                    document.getElementById(prefix + 'series').innerText = player.series;
+                    document.getElementById(prefix + 'style').innerText = player.style;
+                    document.getElementById(prefix + 'info').innerText = `"${player.info}"`;
+                    loadImage(prefix + 'img', player.name);
+                    
+                    document.getElementById(prefix + 'search-vid').href = `https://www.google.com/search?q=${encodeURIComponent('Taskmaster UK ' + player.name + ' clips')}&tbm=vid`;
+                    document.getElementById(prefix + 'search-img').href = `https://www.google.com/search?q=${encodeURIComponent('Taskmaster UK ' + player.name)}&tbm=isch`;
+                    document.getElementById(prefix + 'search-vid').style.display = 'inline-flex';
+                    document.getElementById(prefix + 'search-img').style.display = 'inline-flex';
+                } else {
+                    document.getElementById(prefix + 'name').innerText = "TBD";
+                    document.getElementById(prefix + 'seed').innerText = "-";
+                    document.getElementById(prefix + 'series').innerText = "Awaiting Match";
+                    document.getElementById(prefix + 'style').innerText = "-";
+                    document.getElementById(prefix + 'info').innerText = "-";
+                    document.getElementById(prefix + 'img').src = "https://ui-avatars.com/api/?name=?&background=1a1a1a&color=d4af37&size=150&bold=true";
+                    
+                    document.getElementById(prefix + 'search-vid').style.display = 'none';
+                    document.getElementById(prefix + 'search-img').style.display = 'none';
+                }
+            };
+
+            setPlayerUI(1, match.p1);
+            setPlayerUI(2, match.p2);
+
+            // Vote Controls
+            const voteControls = document.getElementById('vote-controls');
+            const btn1 = document.getElementById('btn-vote-p1');
+            const btn2 = document.getElementById('btn-vote-p2');
+
+            // Only allow voting if both players have made it to this match
+            if (match.p1 && match.p2) {
+                voteControls.classList.remove('hidden');
+                btn1.innerText = `Advance ${match.p1.name}`;
+                btn2.innerText = `Advance ${match.p2.name}`;
+                
+                btn1.onclick = () => advancePlayer(rIndex, mIndex, 1);
+                btn2.onclick = () => advancePlayer(rIndex, mIndex, 2);
+            } else {
+                voteControls.classList.add('hidden');
+            }
+
+            // Show modal
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function advancePlayer(rIndex, mIndex, winnerNum) {
+            const match = bracketState[rIndex][mIndex];
+            const winner = winnerNum === 1 ? match.p1 : match.p2;
+            
+            match.winner = winnerNum;
+
+            if (rIndex < 6) { // 7 total rounds now
+                const nextRound = bracketState[rIndex + 1];
+                const nextMatchIndex = Math.floor(mIndex / 2);
+                const isPlayer1 = mIndex % 2 === 0;
+
+                if (isPlayer1) {
+                    nextRound[nextMatchIndex].p1 = winner;
+                } else {
+                    nextRound[nextMatchIndex].p2 = winner;
+                }
+                
+                clearFutureRounds(rIndex + 1, nextMatchIndex);
+            } else {
+                grandChampion = winner;
+            }
+
+            closeModal();
+            renderMatchups();
+        }
+
+        function clearFutureRounds(startRoundIdx, startMatchIdx) {
+            let currentRound = startRoundIdx;
+            let currentMatch = startMatchIdx;
+
+            while (currentRound < 6) {
+                const match = bracketState[currentRound][currentMatch];
+                if (match.winner) {
+                    match.winner = null;
+                    const nextRoundMatchIdx = Math.floor(currentMatch / 2);
+                    const isPlayer1 = currentMatch % 2 === 0;
+                    
+                    if (isPlayer1) {
+                        bracketState[currentRound + 1][nextRoundMatchIdx].p1 = null;
+                    } else {
+                        bracketState[currentRound + 1][nextRoundMatchIdx].p2 = null;
+                    }
+                    
+                    currentRound++;
+                    currentMatch = nextRoundMatchIdx;
+                } else {
+                    break; 
+                }
+            }
+            
+            if (currentRound === 6 && bracketState[6][0].winner === null) {
+                grandChampion = null;
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('battleModal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Stats Logic
+        function showStats() {
+            if (!grandChampion) return;
+
+            let seriesCount = {};
+            let genderCount = { 'M': 0, 'F': 0, 'NB': 0 };
+            let totalBirthYear = 0;
+            let voteCount = 0;
+
+            // Analyze every player that advanced past Round 1 (to track their deep run preference)
+            for (let r = 1; r < bracketState.length; r++) {
+                bracketState[r].forEach(match => {
+                    if (match.p1) processStat(match.p1);
+                    if (match.p2) processStat(match.p2);
+                });
+            }
+            if (grandChampion) processStat(grandChampion);
+
+            function processStat(player) {
+                seriesCount[player.series] = (seriesCount[player.series] || 0) + 1;
+                genderCount[player.gender] = (genderCount[player.gender] || 0) + 1;
+                totalBirthYear += player.birthYear;
+                voteCount++;
+            }
+
+            let favSeason = Object.keys(seriesCount).reduce((a, b) => seriesCount[a] > seriesCount[b] ? a : b);
+            
+            let totalValidGenders = (genderCount['M'] + genderCount['F']);
+            let mPerc = totalValidGenders > 0 ? Math.round((genderCount['M'] / totalValidGenders) * 100) : 0;
+            let fPerc = totalValidGenders > 0 ? Math.round((genderCount['F'] / totalValidGenders) * 100) : 0;
+            
+            let avgYear = Math.round(totalBirthYear / voteCount);
+            let ageText = avgYear > 1980 ? "Youthful Chaos (Millennials/Gen Z)" : "Seasoned Veterans (Gen X/Boomers)";
+
+            document.getElementById('stat-season').innerText = favSeason;
+            document.getElementById('stat-gender').innerText = `${mPerc}% Men / ${fPerc}% Women`;
+            document.getElementById('stat-age').innerText = `${ageText} (Avg birth year: ${avgYear})`;
+
+            document.getElementById('statsModal').classList.remove('hidden');
+        }
+
+        function closeStats() {
+            document.getElementById('statsModal').classList.add('hidden');
+        }
+
+        // Close modal on click outside
+        window.onclick = function(event) {
+            const bModal = document.getElementById('battleModal');
+            const sModal = document.getElementById('statsModal');
+            if (event.target == bModal) closeModal();
+            if (event.target == sModal) closeStats();
+        }
+
+        // Horizontal Drag to Scroll functionality
+        function setupDragScroll() {
+            const slider = document.querySelector('.bracket-scroll');
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            slider.addEventListener('mousedown', (e) => {
+                isDown = true;
+                slider.style.cursor = 'grabbing';
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeft = slider.scrollLeft;
+            });
+            slider.addEventListener('mouseleave', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+            slider.addEventListener('mouseup', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+            slider.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 2; 
+                slider.scrollLeft = scrollLeft - walk;
+            });
+        }
+
+        // Run setup
+        init();
+
+    </script>
+</body>
+</html>
